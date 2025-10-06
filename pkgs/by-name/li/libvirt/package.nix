@@ -51,7 +51,6 @@
   libnl ? null,
   libpciaccess ? null,
   libtirpc ? null,
-  lvm2 ? null,
   numactl ? null,
   numad ? null,
   parted ? null,
@@ -75,6 +74,8 @@
   xen,
   enableZfs ? stdenv.hostPlatform.isLinux,
   zfs,
+  enableLvm2 ? stdenv.hostPlatform.isLinux,
+  lvm2,
 }:
 
 let
@@ -104,6 +105,9 @@ let
     ++ lib.optionals enableZfs [
       zfs
     ]
+    ++ lib.optionals enableLvm2 [
+      lvm2
+    ]
   );
 in
 
@@ -111,6 +115,7 @@ assert enableXen -> isLinux && isx86_64;
 assert enableCeph -> isLinux;
 assert enableGlusterfs -> isLinux;
 assert enableZfs -> isLinux;
+assert enableLvm2 -> isLinux;
 
 stdenv.mkDerivation rec {
   pname = "libvirt";
@@ -132,6 +137,22 @@ stdenv.mkDerivation rec {
     (replaceVars ./0002-substitute-zfs-and-zpool-commands.patch {
       zfs = "${zfs}/bin/zfs";
       zpool = "${zfs}/bin/zpool";
+    })
+  ]
+  ++ lib.optionals enableLvm2 [
+    (replaceVars ./0003-substitute-lvm2-commands.patch {
+      vgchange = "${lvm2}/bin/vgchange";
+      pvremove = "${lvm2}/bin/pvremove";
+      pvcreate = "${lvm2}/bin/pvcreate";
+      lvs = "${lvm2}/bin/lvs";
+      vgscan = "${lvm2}/bin/vgscan";
+      pvs = "${lvm2}/bin/pvs";
+      vgcreate = "${lvm2}/bin/vgcreate";
+      vgs = "${lvm2}/bin/vgs";
+      vgremove = "${lvm2}/bin/vgremove";
+      lvchange = "${lvm2}/bin/lvchange";
+      lvremove = "${lvm2}/bin/lvremove";
+      lvcreate = "${lvm2}/bin/lvcreate";
     })
   ];
 
@@ -241,7 +262,8 @@ stdenv.mkDerivation rec {
     openiscsi
   ]
   ++ lib.optionals enableXen [ xen ]
-  ++ lib.optionals enableZfs [ zfs ];
+  ++ lib.optionals enableZfs [ zfs ]
+  ++ lib.optionals enableLvm2 [ lvm2 ];
 
   preConfigure =
     let
@@ -355,6 +377,7 @@ stdenv.mkDerivation rec {
       (storage "scsi" true)
       (storage "vstorage" isLinux)
       (storage "zfs" enableZfs)
+      (storage "lvm" enableLvm2)
     ];
 
   doCheck = true;
